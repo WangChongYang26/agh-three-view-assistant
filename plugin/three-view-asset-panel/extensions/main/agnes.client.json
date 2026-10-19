@@ -1,0 +1,12 @@
+{
+  "client": {
+    "entry": "./client/index.js",
+    "styles": ["./client/index.css"],
+    "slots": ["workbench.panel"],
+    "publicConfig": {
+      "title": "三视图资产构建"
+    },
+    "services": [],
+    "projections": []
+  }
+}

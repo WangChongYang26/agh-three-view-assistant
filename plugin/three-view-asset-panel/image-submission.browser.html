@@ -1,0 +1,46 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>三视图提交副本浏览器验证（合成图片）</title>
+<button id="run">运行本地 Canvas 验证</button>
+<pre id="result">仅使用浏览器生成的合成图片；不访问模型、MCP 或用户原图。</pre>
+<script type="module">
+import { prepareImage, prepareProjectImages, exportProject, importProject } from './extensions/main/client/storage.js'
+const output = document.querySelector('#result')
+const equal = (a,b,label) => { if (JSON.stringify(a)!==JSON.stringify(b)) throw new Error(label+': '+JSON.stringify(a)) }
+async function synthesize(width,height) {
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#267ac4';ctx.fillRect(0,0,width,height)
+  ctx.fillStyle='#f5c342';ctx.fillRect(0,0,width/3,height/3)
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'))
+  return new File([blob],`${width}x${height}.png`,{type:'image/png'})
+}
+const bytes = async blob => Array.from(new Uint8Array(await blob.arrayBuffer()))
+document.querySelector('#run').onclick=async()=>{
+  try {
+    const evidence=[]
+    for(const [w,h,expected] of [[832,1504,[805,1456]],[4000,2000,[1456,728]],[512,512,[512,512]]]) {
+      const file=await synthesize(w,h);const before=await bytes(file);const image=await prepareImage(file)
+      const bitmap=await createImageBitmap(await(await fetch(image.dataUrl)).blob())
+      equal([bitmap.width,bitmap.height],expected,'decoded JPEG dimensions');bitmap.close()
+      equal([image.width,image.height],[w,h],'original dimensions');equal(await bytes(image.original),before,'original bytes')
+      evidence.push({original:[w,h],submission:expected,originalBytesPreserved:true})
+    }
+    const file=await synthesize(832,1504);const fresh=await prepareImage(file)
+    const old={...fresh,dataUrl:URL.createObjectURL(file)}
+    const project={id:crypto.randomUUID(),name:'synthetic image acceptance',views:{front:old,side:{...fresh},back:{...fresh}},runs:[]}
+    const prepared=await prepareProjectImages(project);URL.revokeObjectURL(old.dataUrl)
+    const backup=JSON.parse(await exportProject(prepared))
+    equal(await bytes(await(await fetch(backup.project.views.front.originalDataUrl)).blob()),await bytes(file),'backup original bytes')
+    const fallback={...project,views:{...project.views,front:{name:'legacy.png',width:832,height:1504,dataUrl:backup.project.views.front.originalDataUrl}}}
+    const migrated=await prepareProjectImages(fallback)
+    equal(migrated.views.front.originalDataUrl,fallback.views.front.dataUrl,'legacy data URL preservation')
+    equal([migrated.views.front.submissionWidth,migrated.views.front.submissionHeight],[805,1456],'legacy dimensions')
+    // Import writes only this synthetic project into this isolated page origin's IndexedDB.
+    const imported=await importProject(new File([JSON.stringify(backup)],'synthetic-backup.json',{type:'application/json'}))
+    equal([imported.views.front.submissionWidth,imported.views.front.submissionHeight],[805,1456],'imported dimensions')
+    equal(await bytes(imported.views.front.original),await bytes(file),'imported original bytes')
+    const result={status:'passed',cases:evidence,legacyMigrated:true,backupAndImportOriginalBytesPreserved:true}
+    window.imageSubmissionEvidence=result;output.textContent=JSON.stringify(result,null,2)
+  } catch(error) { window.imageSubmissionEvidence={status:'failed',error:error.stack};output.textContent=error.stack }
+}
+</script>

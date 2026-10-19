@@ -1,0 +1,24 @@
+{
+  "name": "@local/three-view-asset-panel",
+  "version": "0.7.1",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "exports": "./extensions/main/index.mjs",
+  "agnes": {
+    "plugins": [
+      {
+        "export": "runtime",
+        "id": "ext:local/three-view-asset-panel/runtime",
+        "runtime": "in-process",
+        "inject": ["skills", "extension"]
+      }
+    ],
+    "clientDescriptors": [
+      {
+        "rowId": "ext:local/three-view-asset-panel/runtime",
+        "path": "./extensions/main/agnes.client.json"
+      }
+    ]
+  }
+}

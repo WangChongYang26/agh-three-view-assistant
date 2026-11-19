@@ -1,4 +1,7 @@
-# AGH 三视图建模与视觉自纠正助手
+# AGH 三视图建模与视觉自纠正助手（
+
+Beware — this person is a complete beginner at programming; the only thing worth borrowing from them is the idea, if there is one.
+警惕——这个人完全是编程小白，能借鉴的只有创意，如果有的话。
 
 在 AGH（Agnes Harness）会话中上传正面、侧面、背面参考图，分阶段完成分析、Blender 建模与自检、按需修正和结果查看。
 
